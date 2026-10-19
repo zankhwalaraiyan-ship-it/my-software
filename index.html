@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloth Shop Manager</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f3f4f8;color:#222}
+  header{background:#1f2a44;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+  header h1{font-size:20px;margin:0}
+  nav{background:#2d3b5e;display:flex;flex-wrap:wrap}
+  nav button{background:none;border:none;color:#cfd6e6;padding:12px 18px;cursor:pointer;font-size:15px}
+  nav button.active,nav button:hover{background:#4a5d8f;color:#fff}
+  main{padding:18px;max-width:1200px;margin:auto}
+  section{display:none}
+  section.active{display:block}
+  .card{background:#fff;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .stat{background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+  .stat small{color:#666}
+  .stat b{display:block;font-size:24px;margin-top:6px;color:#1f2a44}
+  label{font-size:13px;color:#444;display:block;margin-bottom:3px}
+  input,select{width:100%;padding:8px;border:1px solid #ccd;border-radius:5px;font-size:14px}
+  .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end}
+  button.btn{background:#2d6cdf;color:#fff;border:none;padding:9px 16px;border-radius:5px;cursor:pointer;font-size:14px}
+  button.btn:hover{background:#1f55b8}
+  button.green{background:#1e9e5a}button.red{background:#d33}button.gray{background:#777}
+  button.small{padding:4px 9px;font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px;border-bottom:1px solid #e3e6ee;text-align:left}
+  th{background:#eef1f8}
+  td.r,th.r{text-align:right}
+  .low{color:#d33;font-weight:bold}
+  h2{margin-top:0;font-size:18px}
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);overflow:auto;padding:20px;z-index:10}
+  .modal.show{display:block}
+  .modal .box{background:#fff;max-width:720px;margin:auto;padding:24px;border-radius:8px}
+  .bill h2{text-align:center;margin:0}
+  .bill p{margin:3px 0;text-align:center;font-size:13px}
+  .totals{margin-left:auto;width:260px;margin-top:10px}
+  .totals div{display:flex;justify-content:space-between;padding:3px 0}
+  .totals .grand{font-weight:bold;font-size:17px;border-top:2px solid #000;margin-top:4px;padding-top:6px}
+  .label{display:inline-block;width:2.1in;border:1px dashed #999;padding:4px;margin:4px;text-align:center;font-size:11px;vertical-align:top;page-break-inside:avoid}
+  .label svg{max-width:100%}
+  .scan{border:2px solid #2d6cdf;background:#f0f6ff;font-size:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>👕 <span id="shopTitle">Cloth Shop Manager</span></h1>
+  <div>
+    <button class="btn gray small" onclick="shopSettings()">Shop Settings</button>
+    <button class="btn gray small" onclick="backup()">Backup</button>
+    <button class="btn gray small" onclick="document.getElementById('restoreFile').click()">Restore</button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restore(event)">
+  </div>
+</header>
+<nav id="nav">
+  <button data-tab="dashboard" class="active">Dashboard</button>
+  <button data-tab="products">Products / Stock</button>
+  <button data-tab="purchase">Purchase</button>
+  <button data-tab="sales">Sales / Billing</button>
+  <button data-tab="history">History</button>
+  <button data-tab="reports">Reports</button>
+</nav>
+
+<main>
+<!-- DASHBOARD -->
+<section id="dashboard" class="active">
+  <div class="grid" id="stats"></div>
+  <div class="card" style="margin-top:16px">
+    <h2>Low Stock Items</h2>
+    <table><thead><tr><th>Product</th><th>Size</th><th>Color</th><th class="r">Stock</th><th class="r">Min</th></tr></thead><tbody id="lowStock"></tbody></table>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products">
+  <div class="card">
+    <h2 id="prodFormTitle">Add Product</h2>
+    <div class="form">
+      <div><label>Name *</label><input id="pName" placeholder="e.g. Cotton Shirt"></div>
+      <div><label>Category</label><input id="pCat" placeholder="Shirt / Saree / Jeans"></div>
+      <div><label>Size</label><input id="pSize" placeholder="M / L / XL / Free"></div>
+      <div><label>Color</label><input id="pColor"></div>
+      <div><label>Purchase Cost (₹)</label><input id="pCost" type="number" min="0" step="0.01"></div>
+      <div><label>Selling Price (₹) *</label><input id="pPrice" type="number" min="0" step="0.01"></div>
+      <div><label>Opening Stock</label><input id="pStock" type="number" min="0" value="0"></div>
+      <div><label>Low Stock Alert</label><input id="pMin" type="number" min="0" value="5"></div>
+      <div><label>Barcode (scan, type, or leave blank to auto-create)</label><input id="pBarcode" placeholder="Scan here"></div>
+      <div><button class="btn green" onclick="saveProduct()">Save Product</button>
+           <button class="btn gray" onclick="resetProdForm()">Clear</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Product List</h2>
+    <input id="prodSearch" placeholder="Search name or barcode..." oninput="renderProducts()" style="max-width:300px;margin-bottom:10px">
+    <button class="btn gray small" onclick="labelAll()">Print Labels for All Stock</button>
+    <table><thead><tr><th>#</th><th>Name</th><th>Category</th><th>Size</th><th>Color</th><th>Barcode</th><th class="r">Cost</th><th class="r">Price</th><th class="r">Stock</th><th></th></tr></thead><tbody id="prodBody"></tbody></table>
+  </div>
+</section>
+
+<!-- PURCHASE -->
+<section id="purchase">
+  <div class="card">
+    <h2>New Purchase (Stock In)</h2>
+    <div class="form">
+      <div><label>Date</label><input id="purDate" type="date"></div>
+      <div><label>Supplier Name</label><input id="purSupplier"></div>
+      <div><label>Supplier Invoice No.</label><input id="purInv"></div>
+    </div>
+    <hr>
+    <div class="form" style="margin-bottom:10px">
+      <div style="grid-column:span 2"><label>📷 Scan Barcode (select product, then enter quantity)</label>
+        <input id="purScan" class="scan" placeholder="Click here and scan..." onkeydown="scanPurchase(event)"></div>
+    </div>
+    <div class="form">
+      <div><label>Product</label><select id="purProd" onchange="fillPurCost()"></select></div>
+      <div><label>Quantity</label><input id="purQty" type="number" min="1" value="1"></div>
+      <div><label>Cost per piece (₹)</label><input id="purCost" type="number" min="0" step="0.01"></div>
+      <div><button class="btn" onclick="addPurLine()">Add Item</button></div>
+    </div>
+    <table style="margin-top:12px"><thead><tr><th>Product</th><th class="r">Qty</th><th class="r">Cost</th><th class="r">Amount</th><th></th></tr></thead><tbody id="purCartBody"></tbody></table>
+    <h3 style="text-align:right">Total: ₹<span id="purTotal">0.00</span></h3>
+    <button class="btn green" onclick="savePurchase()">Save Purchase</button>
+  </div>
+</section>
+
+<!-- SALES -->
+<section id="sales">
+  <div class="card">
+    <h2>New Sale / Bill</h2>
+    <div class="form">
+      <div><label>Date</label><input id="saleDate" type="date"></div>
+      <div><label>Customer Name</label><input id="custName" placeholder="Walk-in Customer"></div>
+      <div><label>Phone</label><input id="custPhone"></div>
+      <div><label>Payment Mode</label><select id="payMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option></select></div>
+    </div>
+    <hr>
+    <div class="form" style="margin-bottom:10px">
+      <div style="grid-column:span 2"><label>📷 Scan Barcode (each scan adds 1 piece to the bill)</label>
+        <input id="saleScan" class="scan" placeholder="Click here and scan..." onkeydown="scanSale(event)"></div>
+    </div>
+    <div class="form">
+      <div><label>Product</label><select id="saleProd" onchange="fillSalePrice()"></select></div>
+      <div><label>Quantity</label><input id="saleQty" type="number" min="1" value="1"></div>
+      <div><label>Price (₹)</label><input id="salePrice" type="number" min="0" step="0.01"></div>
+      <div><button class="btn" onclick="addSaleLine()">Add Item</button></div>
+    </div>
+    <table style="margin-top:12px"><thead><tr><th>Product</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th><th></th></tr></thead><tbody id="saleCartBody"></tbody></table>
+    <div class="form" style="margin-top:12px;max-width:420px">
+      <div><label>Discount (₹)</label><input id="saleDisc" type="number" min="0" value="0" oninput="calcSale()"></div>
+      <div><label>GST %</label><input id="saleGst" type="number" min="0" value="0" oninput="calcSale()"></div>
+    </div>
+    <div class="totals">
+      <div><span>Sub Total</span><span>₹<span id="sSub">0.00</span></span></div>
+      <div><span>Discount</span><span>- ₹<span id="sDisc">0.00</span></span></div>
+      <div><span>GST</span><span>₹<span id="sGst">0.00</span></span></div>
+      <div class="grand"><span>Grand Total</span><span>₹<span id="sTotal">0.00</span></span></div>
+    </div>
+    <br><button class="btn green" onclick="saveSale()">Save &amp; Generate Bill</button>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section id="history">
+  <div class="card">
+    <h2>Sales History</h2>
+    <table><thead><tr><th>Bill No</th><th>Date</th><th>Customer</th><th>Payment</th><th class="r">Total</th><th></th></tr></thead><tbody id="salesHist"></tbody></table>
+  </div>
+  <div class="card">
+    <h2>Purchase History</h2>
+    <table><thead><tr><th>Purchase No</th><th>Date</th><th>Supplier</th><th>Items</th><th class="r">Total</th></tr></thead><tbody id="purHist"></tbody></table>
+  </div>
+</section>
+
+<!-- REPORTS -->
+<section id="reports">
+  <div class="card">
+    <h2>Report by Date Range</h2>
+    <div class="form" style="max-width:520px">
+      <div><label>From</label><input id="repFrom" type="date"></div>
+      <div><label>To</label><input id="repTo" type="date"></div>
+      <div><button class="btn" onclick="renderReport()">Show</button></div>
+    </div>
+    <div class="grid" id="repStats" style="margin-top:14px"></div>
+  </div>
+  <div class="card">
+    <h2>Item-wise Sales</h2>
+    <table><thead><tr><th>Product</th><th class="r">Qty Sold</th><th class="r">Amount</th></tr></thead><tbody id="repItems"></tbody></table>
+  </div>
+</section>
+</main>
+
+<!-- SETTINGS MODAL -->
+<div class="modal" id="setModal">
+  <div class="box" style="max-width:480px">
+    <h2>Shop Settings</h2>
+    <div style="display:grid;gap:10px">
+      <div><label>Shop name</label><input id="setShop"></div>
+      <div><label>Address</label><input id="setAddr"></div>
+      <div><label>Phone</label><input id="setPhone"></div>
+      <div><label>GST No. (optional)</label><input id="setGst"></div>
+    </div>
+    <div style="margin-top:14px;text-align:right">
+      <button class="btn green" onclick="saveSettings()">Save</button>
+      <button class="btn gray" onclick="$('setModal').classList.remove('show')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- LABEL MODAL -->
+<div class="modal" id="labelModal">
+  <div class="box" style="max-width:900px">
+    <div style="position:sticky;top:0;background:#fff;z-index:2;padding:4px 0 12px;border-bottom:1px solid #ddd;margin-bottom:12px">
+      <div class="form">
+        <div><label>Sticker Size</label>
+          <select id="stickerSize" onchange="applySticker()">
+            <option value="50x25">Roll 50mm x 25mm</option>
+            <option value="38x25">Roll 38mm x 25mm</option>
+            <option value="75x50">Roll 75mm x 50mm</option>
+            <option value="a4">A4 sheet (48mm x 25mm, 4 per row)</option>
+          </select></div>
+        <div id="lblCopiesWrap"><label>Number of labels</label>
+          <input id="lblCopies" type="number" min="1" max="500" value="1" oninput="renderLabelPreview()"></div>
+        <div>
+          <button class="btn" onclick="printLabelSheet()">🖨 Print</button>
+          <button class="btn green" onclick="openLabelTab()">Open in new tab</button>
+          <button class="btn gray" onclick="$('labelModal').classList.remove('show')">Close</button>
+        </div>
+      </div>
+      <small id="lblNote" style="color:#555;display:block;margin-top:6px"></small>
+      <small style="color:#888">In the print window choose your sticker printer, Margins: None, Scale: 100%. If Print does nothing, use "Open in new tab" and press Ctrl+P there.</small>
+    </div>
+    <div id="labelArea"></div>
+  </div>
+</div>
+
+<!-- BILL MODAL -->
+<div class="modal" id="billModal">
+  <div class="box">
+    <div id="billArea" class="bill"></div>
+    <div style="margin-top:16px;text-align:right">
+      <button class="btn" onclick="printBill()">🖨 Print Bill</button>
+      <button class="btn green" onclick="openBillTab()">Open in new tab</button>
+      <button class="btn gray" onclick="closeBill()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = 'clothShopDB';
+let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
+  products: [], purchases: [], sales: [],
+  settings: { shop: 'My Cloth Store', address: 'Your Address, City', phone: '', gst: '' },
+  seq: { prod: 1, pur: 1, bill: 1 }
+};
+let purCart = [], saleCart = [], editId = null;
+
+const $ = id => document.getElementById(id);
+const money = n => (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
+const today = () => new Date().toISOString().slice(0, 10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function save() { localStorage.setItem(KEY, JSON.stringify(db)); }
+const pname = p => `${p.name}${p.size ? ' - ' + p.size : ''}${p.color ? ' - ' + p.color : ''}`;
+
+/* ---------- Tabs ---------- */
+$('nav').addEventListener('click', e => {
+  if (e.target.dataset.tab) showTab(e.target.dataset.tab);
+});
+function showTab(t) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === t));
+  renderAll();
+  const f = { sales: 'saleScan', purchase: 'purScan' }[t]; if (f) $(f).focus();
+}
+
+/* ---------- Settings / Backup ---------- */
+function shopSettings() {
+  const t = db.settings;
+  $('setShop').value = t.shop; $('setAddr').value = t.address; $('setPhone').value = t.phone; $('setGst').value = t.gst;
+  $('setModal').classList.add('show');
+}
+function saveSettings() {
+  const t = db.settings;
+  t.shop = $('setShop').value.trim() || t.shop; t.address = $('setAddr').value.trim();
+  t.phone = $('setPhone').value.trim(); t.gst = $('setGst').value.trim();
+  save(); $('setModal').classList.remove('show'); renderAll();
+}
+function backup() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' }));
+  a.download = 'clothshop-backup-' + today() + '.json';
+  a.click();
+}
+function restore(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try { db = JSON.parse(r.result); save(); renderAll(); alert('Data restored.'); }
+    catch { alert('Invalid backup file.'); }
+  };
+  r.readAsText(f);
+}
+
+/* ---------- Products ---------- */
+function saveProduct() {
+  const name = $('pName').value.trim();
+  const price = parseFloat($('pPrice').value);
+  if (!name || isNaN(price)) return alert('Name and Selling Price are required.');
+  const barcode = $('pBarcode').value.trim() || newBarcode();
+  if (db.products.some(p => p.barcode === barcode && p.id !== editId)) return alert('This barcode is already used by another product.');
+  const data = {
+    name, barcode, category: $('pCat').value.trim(), size: $('pSize').value.trim(), color: $('pColor').value.trim(),
+    cost: parseFloat($('pCost').value) || 0, price, min: parseInt($('pMin').value) || 0
+  };
+  if (editId) {
+    Object.assign(db.products.find(p => p.id === editId), data, { stock: parseInt($('pStock').value) || 0 });
+  } else {
+    db.products.push({ id: db.seq.prod++, ...data, stock: parseInt($('pStock').value) || 0 });
+  }
+  save(); resetProdForm(); renderAll();
+}
+function editProduct(id) {
+  const p = db.products.find(x => x.id === id);
+  editId = id;
+  $('pName').value = p.name; $('pCat').value = p.category; $('pSize').value = p.size; $('pColor').value = p.color;
+  $('pCost').value = p.cost; $('pPrice').value = p.price; $('pStock').value = p.stock; $('pMin').value = p.min;
+  $('pBarcode').value = p.barcode || '';
+  $('prodFormTitle').textContent = 'Edit Product';
+  window.scrollTo(0, 0);
+}
+function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  db.products = db.products.filter(p => p.id !== id);
+  save(); renderAll();
+}
+function resetProdForm() {
+  editId = null;
+  ['pName','pCat','pSize','pColor','pCost','pPrice','pBarcode'].forEach(i => $(i).value = '');
+  $('pStock').value = 0; $('pMin').value = 5;
+  $('prodFormTitle').textContent = 'Add Product';
+}
+function renderProducts() {
+  const q = $('prodSearch').value.toLowerCase();
+  $('prodBody').innerHTML = db.products
+    .filter(p => (pname(p) + p.category + p.barcode).toLowerCase().includes(q))
+    .map(p => `<tr>
+      <td>${p.id}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td><td>${esc(p.size)}</td><td>${esc(p.color)}</td>
+      <td>${esc(p.barcode)}</td>
+      <td class="r">${money(p.cost)}</td><td class="r">${money(p.price)}</td>
+      <td class="r ${p.stock <= p.min ? 'low' : ''}">${p.stock}</td>
+      <td><button class="btn small" onclick="editProduct(${p.id})">Edit</button>
+          <button class="btn small green" onclick="labelProduct(${p.id})">Label</button>
+          <button class="btn small red" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="10">No products yet.</td></tr>';
+}
+function fillProductSelects() {
+  const opts = db.products.map(p => `<option value="${p.id}">${esc(pname(p))} (Stock: ${p.stock})</option>`).join('');
+  const keepP = $('purProd').value, keepS = $('saleProd').value;
+  $('purProd').innerHTML = opts; $('saleProd').innerHTML = opts;
+  if (keepP) $('purProd').value = keepP;
+  if (keepS) $('saleProd').value = keepS;
+  fillPurCost(); fillSalePrice();
+}
+
+/* ---------- Purchase ---------- */
+function fillPurCost() {
+  const p = db.products.find(x => x.id == $('purProd').value);
+  if (p) $('purCost').value = p.cost;
+}
+function addPurLine() {
+  const p = db.products.find(x => x.id == $('purProd').value);
+  const qty = parseInt($('purQty').value), cost = parseFloat($('purCost').value);
+  if (!p || !(qty > 0) || isNaN(cost)) return alert('Select product, quantity and cost.');
+  purCart.push({ pid: p.id, name: pname(p), qty, cost });
+  renderPurCart();
+}
+function renderPurCart() {
+  let total = 0;
+  $('purCartBody').innerHTML = purCart.map((l, i) => {
+    total += l.qty * l.cost;
+    return `<tr><td>${esc(l.name)}</td><td class="r">${l.qty}</td><td class="r">${money(l.cost)}</td>
+      <td class="r">${money(l.qty * l.cost)}</td><td><button class="btn small red" onclick="purCart.splice(${i},1);renderPurCart()">✕</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5">No items added.</td></tr>';
+  $('purTotal').textContent = money(total);
+}
+function savePurchase() {
+  if (!purCart.length) return alert('Add at least one item.');
+  const total = purCart.reduce((s, l) => s + l.qty * l.cost, 0);
+  purCart.forEach(l => {
+    const p = db.products.find(x => x.id === l.pid);
+    if (p) { p.stock += l.qty; p.cost = l.cost; }
+  });
+  db.purchases.push({
+    id: db.seq.pur++, date: $('purDate').value || today(), supplier: $('purSupplier').value.trim() || 'Unknown',
+    invoice: $('purInv').value.trim(), items: purCart, total
+  });
+  const labelList = purCart.map(l => ({ p: db.products.find(x => x.id === l.pid), copies: l.qty })).filter(x => x.p);
+  purCart = []; $('purSupplier').value = ''; $('purInv').value = '';
+  save(); renderAll(); alert('Purchase saved. Stock updated.');
+  if (labelList.length) printLabels(labelList, 'Purchase saved. Labels for the items you just bought are ready to print.');
+}
+
+/* ---------- Sales ---------- */
+function fillSalePrice() {
+  const p = db.products.find(x => x.id == $('saleProd').value);
+  if (p) $('salePrice').value = p.price;
+}
+function addSaleLine() {
+  const p = db.products.find(x => x.id == $('saleProd').value);
+  const qty = parseInt($('saleQty').value), price = parseFloat($('salePrice').value);
+  if (!p || !(qty > 0) || isNaN(price)) return alert('Select product, quantity and price.');
+  const already = saleCart.filter(l => l.pid === p.id).reduce((s, l) => s + l.qty, 0);
+  if (already + qty > p.stock) return alert(`Only ${p.stock} in stock.`);
+  saleCart.push({ pid: p.id, name: pname(p), qty, price, cost: p.cost });
+  renderSaleCart();
+}
+function calcSale() {
+  const sub = saleCart.reduce((s, l) => s + l.qty * l.price, 0);
+  const disc = Math.min(parseFloat($('saleDisc').value) || 0, sub);
+  const gst = (sub - disc) * (parseFloat($('saleGst').value) || 0) / 100;
+  $('sSub').textContent = money(sub); $('sDisc').textContent = money(disc);
+  $('sGst').textContent = money(gst); $('sTotal').textContent = money(sub - disc + gst);
+  return { sub, disc, gst, total: sub - disc + gst };
+}
+function renderSaleCart() {
+  $('saleCartBody').innerHTML = saleCart.map((l, i) => `<tr><td>${esc(l.name)}</td><td class="r">${l.qty}</td>
+    <td class="r">${money(l.price)}</td><td class="r">${money(l.qty * l.price)}</td>
+    <td><button class="btn small red" onclick="saleCart.splice(${i},1);renderSaleCart()">✕</button></td></tr>`).join('')
+    || '<tr><td colspan="5">No items added.</td></tr>';
+  calcSale();
+}
+function saveSale() {
+  if (!saleCart.length) return alert('Add at least one item.');
+  const t = calcSale();
+  saleCart.forEach(l => { const p = db.products.find(x => x.id === l.pid); if (p) p.stock -= l.qty; });
+  const sale = {
+    id: db.seq.bill++, date: $('saleDate').value || today(),
+    customer: $('custName').value.trim() || 'Walk-in Customer', phone: $('custPhone').value.trim(),
+    mode: $('payMode').value, items: saleCart, gstPct: parseFloat($('saleGst').value) || 0, ...t
+  };
+  db.sales.push(sale);
+  saleCart = []; $('custName').value = ''; $('custPhone').value = ''; $('saleDisc').value = 0; $('saleGst').value = 0;
+  save(); renderAll(); showBill(sale.id);
+}
+
+/* ---------- Bill ---------- */
+function showBill(id) {
+  const s = db.sales.find(x => x.id === id), st = db.settings;
+  const rows = s.items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.name)}</td><td class="r">${l.qty}</td>
+    <td class="r">${money(l.price)}</td><td class="r">${money(l.qty * l.price)}</td></tr>`).join('');
+  $('billArea').innerHTML = `
+    <h2>${esc(st.shop)}</h2>
+    <p>${esc(st.address)}</p>
+    <p>${st.phone ? 'Phone: ' + esc(st.phone) : ''} ${st.gst ? ' | GST No: ' + esc(st.gst) : ''}</p>
+    <hr>
+    <div style="display:flex;justify-content:space-between;font-size:14px">
+      <div><b>Bill No:</b> ${String(s.id).padStart(5, '0')}<br><b>Customer:</b> ${esc(s.customer)}${s.phone ? '<br><b>Phone:</b> ' + esc(s.phone) : ''}</div>
+      <div style="text-align:right"><b>Date:</b> ${esc(s.date)}<br><b>Payment:</b> ${esc(s.mode)}</div>
+    </div>
+    <table style="margin-top:10px"><thead><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="totals">
+      <div><span>Sub Total</span><span>₹${money(s.sub)}</span></div>
+      <div><span>Discount</span><span>- ₹${money(s.disc)}</span></div>
+      <div><span>GST (${s.gstPct}%)</span><span>₹${money(s.gst)}</span></div>
+      <div class="grand"><span>Grand Total</span><span>₹${money(s.total)}</span></div>
+    </div>
+    <p style="margin-top:20px">Thank you! Visit again.</p>`;
+  $('billModal').classList.add('show');
+}
+function closeBill() { $('billModal').classList.remove('show'); }
+
+/* ---------- History ---------- */
+function renderHistory() {
+  $('salesHist').innerHTML = [...db.sales].reverse().map(s => `<tr><td>${String(s.id).padStart(5, '0')}</td><td>${esc(s.date)}</td>
+    <td>${esc(s.customer)}</td><td>${esc(s.mode)}</td><td class="r">₹${money(s.total)}</td>
+    <td><button class="btn small" onclick="showBill(${s.id})">View / Print</button></td></tr>`).join('')
+    || '<tr><td colspan="6">No sales yet.</td></tr>';
+  $('purHist').innerHTML = [...db.purchases].reverse().map(p => `<tr><td>P-${String(p.id).padStart(4, '0')}</td><td>${esc(p.date)}</td>
+    <td>${esc(p.supplier)}</td><td>${p.items.map(i => esc(i.name) + ' x' + i.qty).join(', ')}</td>
+    <td class="r">₹${money(p.total)}</td></tr>`).join('') || '<tr><td colspan="5">No purchases yet.</td></tr>';
+}
+
+/* ---------- Dashboard / Reports ---------- */
+function renderDashboard() {
+  const stockQty = db.products.reduce((s, p) => s + p.stock, 0);
+  const stockVal = db.products.reduce((s, p) => s + p.stock * p.cost, 0);
+  const todaySales = db.sales.filter(s => s.date === today()).reduce((s, x) => s + x.total, 0);
+  const totalSales = db.sales.reduce((s, x) => s + x.total, 0);
+  const totalPur = db.purchases.reduce((s, x) => s + x.total, 0);
+  $('stats').innerHTML = [
+    ['Products', db.products.length], ['Total Stock (pcs)', stockQty], ['Stock Value (cost)', '₹' + money(stockVal)],
+    ["Today's Sales", '₹' + money(todaySales)], ['Total Sales', '₹' + money(totalSales)], ['Total Purchases', '₹' + money(totalPur)]
+  ].map(([a, b]) => `<div class="stat"><small>${a}</small><b>${b}</b></div>`).join('');
+  $('lowStock').innerHTML = db.products.filter(p => p.stock <= p.min).map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.size)}</td>
+    <td>${esc(p.color)}</td><td class="r low">${p.stock}</td><td class="r">${p.min}</td></tr>`).join('')
+    || '<tr><td colspan="5">All items sufficiently stocked.</td></tr>';
+}
+function renderReport() {
+  const from = $('repFrom').value || '0000-00-00', to = $('repTo').value || '9999-99-99';
+  const sales = db.sales.filter(s => s.date >= from && s.date <= to);
+  const purs = db.purchases.filter(p => p.date >= from && p.date <= to);
+  const sTot = sales.reduce((s, x) => s + x.total, 0);
+  const pTot = purs.reduce((s, x) => s + x.total, 0);
+  let profit = 0; const items = {};
+  sales.forEach(s => {
+    const subAfter = s.sub - s.disc;
+    s.items.forEach(l => {
+      profit += l.qty * (l.price - l.cost);
+      (items[l.name] = items[l.name] || { q: 0, a: 0 }); items[l.name].q += l.qty; items[l.name].a += l.qty * l.price;
+    });
+    profit -= s.disc;
+  });
+  $('repStats').innerHTML = [
+    ['Bills', sales.length], ['Sales Total', '₹' + money(sTot)], ['Purchase Total', '₹' + money(pTot)],
+    ['Estimated Profit', '₹' + money(profit)]
+  ].map(([a, b]) => `<div class="stat"><small>${a}</small><b>${b}</b></div>`).join('');
+  $('repItems').innerHTML = Object.entries(items).map(([n, v]) => `<tr><td>${esc(n)}</td><td class="r">${v.q}</td>
+    <td class="r">₹${money(v.a)}</td></tr>`).join('') || '<tr><td colspan="3">No data.</td></tr>';
+}
+
+/* ---------- Barcode ---------- */
+function newBarcode() {
+  let code;
+  do { db.seq.bc = (db.seq.bc || 1000000) + 1; code = String(db.seq.bc); }
+  while (db.products.some(p => p.barcode === code));
+  return code;
+}
+function scanSale(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const code = e.target.value.trim(); e.target.value = '';
+  if (!code) return;
+  const p = db.products.find(x => x.barcode === code);
+  if (!p) return alert('No product found with barcode ' + code);
+  const already = saleCart.filter(l => l.pid === p.id).reduce((s, l) => s + l.qty, 0);
+  if (already + 1 > p.stock) return alert(`Only ${p.stock} of "${pname(p)}" in stock.`);
+  const ex = saleCart.find(l => l.pid === p.id && l.price === p.price);
+  if (ex) ex.qty++; else saleCart.push({ pid: p.id, name: pname(p), qty: 1, price: p.price, cost: p.cost });
+  renderSaleCart();
+}
+function scanPurchase(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const code = e.target.value.trim(); e.target.value = '';
+  if (!code) return;
+  const p = db.products.find(x => x.barcode === code);
+  if (!p) return alert('No product found with barcode ' + code);
+  $('purProd').value = p.id; fillPurCost();
+  $('purQty').value = 1; $('purQty').focus(); $('purQty').select();
+}
+const STICKERS = {
+  '50x25': { w: 50, h: 25, roll: true, fs: 6.5 },
+  '38x25': { w: 38, h: 25, roll: true, fs: 6 },
+  '75x50': { w: 75, h: 50, roll: true, fs: 9 },
+  'a4':    { w: 48, h: 25, roll: false, fs: 6.5 }
+};
+
+/* Code 128 (subset B) barcode generator - works fully offline */
+const C128 = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+function code128SVG(text) {
+  const codes = [104];
+  for (const ch of String(text)) {
+    let c = ch.charCodeAt(0) - 32;
+    if (c < 0 || c > 95) c = '?'.charCodeAt(0) - 32;
+    codes.push(c);
+  }
+  let sum = codes[0];
+  for (let i = 1; i < codes.length; i++) sum += i * codes[i];
+  codes.push(sum % 103, 106);
+  const quiet = 10, bh = 40, fs = 12;
+  let x = quiet, d = '';
+  codes.forEach(c => {
+    [...C128[c]].forEach((w, i) => {
+      w = +w;
+      if (i % 2 === 0) d += `M${x} 0h${w}v${bh}h-${w}z`;
+      x += w;
+    });
+  });
+  const W = x + quiet, H = bh + fs + 4;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <rect width="${W}" height="${H}" fill="#fff"/><path d="${d}" fill="#000"/>
+    <text x="${W / 2}" y="${bh + fs}" text-anchor="middle" font-family="Arial,monospace" font-size="${fs}" fill="#000">${esc(text)}</text></svg>`;
+}
+
+/* Reliable printing: prints from a hidden page, so only the bill / stickers are printed */
+function printHTML(body, css) {
+  const old = $('printFrame'); if (old) old.remove();
+  const fr = document.createElement('iframe');
+  fr.id = 'printFrame';
+  fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(fr);
+  const d = fr.contentWindow.document;
+  d.open();
+  d.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title><style>${css}</style></head><body>${body}</body></html>`);
+  d.close();
+  setTimeout(() => { fr.contentWindow.focus(); fr.contentWindow.print(); }, 400);
+}
+const BILL_CSS = `
+  body{font-family:Segoe UI,Arial,sans-serif;margin:0;color:#000}
+  h2{text-align:center;margin:0}
+  p{margin:3px 0;text-align:center;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:6px;border-bottom:1px solid #ccc;text-align:left}
+  td.r,th.r{text-align:right}
+  .totals{margin-left:auto;width:260px;margin-top:10px}
+  .totals div{display:flex;justify-content:space-between;padding:3px 0}
+  .totals .grand{font-weight:bold;font-size:17px;border-top:2px solid #000;margin-top:4px;padding-top:6px}
+  @page{size:A4;margin:12mm}`;
+function printBill() { printHTML($('billArea').innerHTML, BILL_CSS); }
+
+function stickerCSS(key, forPrint) {
+  const s = STICKERS[key];
+  return `
+    .label{width:${s.w}mm;height:${s.h}mm;padding:1mm;margin:0;overflow:hidden;font-size:${s.fs}pt;line-height:1.15;text-align:center;
+      font-family:Arial,sans-serif;display:block;box-sizing:border-box;color:#000;
+      border:${forPrint && s.roll ? 'none' : '1px dashed #bbb'};${s.roll ? 'page-break-after:always;break-after:page;' : ''}}
+    .label:last-child{page-break-after:auto;break-after:auto}
+    .label svg{width:100%;height:${(s.h * 0.42).toFixed(1)}mm;display:block;margin:0 auto}
+    #labelArea,#sheet{${s.roll ? 'display:block' : 'display:flex;flex-wrap:wrap'}}`;
+}
+function applySticker() {
+  const key = $('stickerSize').value || '50x25';
+  db.settings.sticker = key; save();
+  let st = $('stickerStyle');
+  if (!st) { st = document.createElement('style'); st.id = 'stickerStyle'; document.head.appendChild(st); }
+  st.textContent = stickerCSS(key, false);
+}
+function openPrintTab(body, css, title) {
+  const bar = '<div class="noprint" style="padding:10px;background:#eef;font-family:Arial,sans-serif"><button onclick="window.print()" style="padding:8px 16px;font-size:15px">🖨 Print</button> &nbsp; In the print window: Margins None, Scale 100%</div>';
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${css}@media print{.noprint{display:none!important}}</style></head><body>${bar}${body}</body></html>`;
+  const w = window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+  if (!w) alert('Your browser blocked the new tab. Please allow pop-ups for this page and try again.');
+}
+function openBillTab() { openPrintTab($('billArea').innerHTML, BILL_CSS, 'Bill'); }
+function labelSheetCSS() {
+  const key = $('stickerSize').value || '50x25', s = STICKERS[key];
+  return 'body{margin:0}' + stickerCSS(key, true) +
+    `@page{size:${s.roll ? s.w + 'mm ' + s.h + 'mm' : 'A4'};margin:${s.roll ? '0' : '8mm'}}`;
+}
+function printLabelSheet() { printHTML(`<div id="sheet">${$('labelArea').innerHTML}</div>`, labelSheetCSS()); }
+function openLabelTab() { openPrintTab(`<div id="sheet">${$('labelArea').innerHTML}</div>`, labelSheetCSS(), 'Barcode Labels'); }
+function labelHTML(p) {
+  return `<div class="label"><b>${esc(db.settings.shop)}</b><div>${esc(pname(p))}</div>
+    ${code128SVG(p.barcode)}<div><b>₹${money(p.price)}</b></div></div>`;
+}
+let labelState = { items: [], single: false };
+function renderLabelPreview() {
+  if (labelState.single) {
+    labelState.items[0].copies = Math.min(500, Math.max(1, parseInt($('lblCopies').value) || 1));
+  }
+  let html = '';
+  labelState.items.forEach(({ p, copies }) => { for (let i = 0; i < copies; i++) html += labelHTML(p); });
+  $('labelArea').innerHTML = html;
+}
+function openLabels(items, single, note) {
+  if (!items.length) return alert('Nothing to print.');
+  labelState = { items, single: !!single };
+  $('lblCopiesWrap').style.display = single ? '' : 'none';
+  if (single) $('lblCopies').value = items[0].copies;
+  const total = items.reduce((s, x) => s + x.copies, 0);
+  $('lblNote').textContent = note || (single ? pname(items[0].p) : `${total} labels (one per piece).`);
+  $('stickerSize').value = db.settings.sticker || '50x25';
+  applySticker();
+  renderLabelPreview();
+  $('labelModal').classList.add('show');
+  $('labelModal').scrollTop = 0;
+}
+function printLabels(items, note) { openLabels(items, false, note); }
+function labelProduct(id) {
+  const p = db.products.find(x => x.id === id);
+  openLabels([{ p, copies: Math.max(p.stock, 1) }], true);
+}
+function labelAll() {
+  const list = db.products.filter(p => p.stock > 0).map(p => ({ p, copies: Math.min(p.stock, 500) }));
+  if (!list.length) return alert('No stock available.');
+  openLabels(list, false, 'One label for every piece in stock.');
+}
+
+/* ---------- Init ---------- */
+db.products.forEach(p => { if (!p.barcode) p.barcode = newBarcode(); });
+save();
+$('purQty').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addPurLine(); $('purScan').focus(); }
+});
+function renderAll() {
+  $('shopTitle').textContent = db.settings.shop;
+  renderDashboard(); renderProducts(); fillProductSelects();
+  renderPurCart(); renderSaleCart(); renderHistory(); renderReport();
+}
+$('purDate').value = today(); $('saleDate').value = today();
+renderAll();
+</script>
+</body>
+</html>
